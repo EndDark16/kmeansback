@@ -1,0 +1,22 @@
+{
+  "k": 4,
+  "hospitals": [
+    [
+      4.874,
+      5.625
+    ],
+    [
+      16.056,
+      15.018
+    ],
+    [
+      14.865,
+      5.532
+    ],
+    [
+      5.456,
+      15.873
+    ]
+  ],
+  "description": "Deterministic K-Means (k=4) entrenado sobre neighborhoods_synthetic.csv con coordenadas (x_km, y_km)."
+}
