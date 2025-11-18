@@ -22,6 +22,9 @@ def test_kmeans_run_endpoint() -> None:
     assert len(body["neighborhoods"]) == payload["n"]
     assert len(body["hospitals"]) == payload["k"]
     assert len(body["assignments"]) == payload["n"]
+    assert "cluster_stats" in body and len(body["cluster_stats"]) == payload["k"]
+    assert body["grid_size"] == payload["m"]
+    assert "distance_bins" in body
 
 
 def test_pretrained_endpoint() -> None:

@@ -6,11 +6,16 @@ from pathlib import Path
 from random import Random
 from typing import List
 
+import math
+from collections import defaultdict
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
 from .kmeans import KMeansResult, run_kmeans
 from .schemas import (
+    ClusterStats,
+    DistanceBin,
     Hospital,
     KMeansRequest,
     KMeansResponse,
@@ -94,11 +99,30 @@ def run_kmeans_endpoint(payload: KMeansRequest) -> KMeansResponse:
         Hospital(id=idx + 1, x=centroid[0], y=centroid[1])
         for idx, centroid in enumerate(result.centroids)
     ]
+
+    (
+        cluster_stats,
+        overall_avg_distance,
+        overall_max_distance,
+        inertia,
+        overall_distances,
+    ) = compute_cluster_stats(
+        neighborhoods,
+        hospitals,
+        result.assignments,
+    )
+    distance_bins = build_distance_bins(overall_distances)
     return KMeansResponse(
         neighborhoods=neighborhoods,
         hospitals=hospitals,
         assignments=result.assignments,
         iterations=result.iterations,
+        grid_size=payload.m,
+        cluster_stats=cluster_stats,
+        overall_avg_distance=overall_avg_distance,
+        overall_max_distance=overall_max_distance,
+        inertia=inertia,
+        distance_bins=distance_bins,
     )
 
 
@@ -115,3 +139,65 @@ def get_pretrained_model() -> PretrainedModelResponse:
         raise HTTPException(status_code=500, detail="Invalid pretrained model format")
 
     return PretrainedModelResponse(**payload)
+
+
+def compute_cluster_stats(
+    neighborhoods: List[Neighborhood],
+    hospitals: List[Hospital],
+    assignments: List[int],
+) -> tuple[List[ClusterStats], float, float, float, List[float]]:
+    distances_by_cluster: dict[int, List[float]] = defaultdict(list)
+    overall_distances: List[float] = []
+
+    for neighborhood, cluster in zip(neighborhoods, assignments):
+        hospital = hospitals[cluster]
+        distance = math.hypot(neighborhood.x - hospital.x, neighborhood.y - hospital.y)
+        distances_by_cluster[cluster].append(distance)
+        overall_distances.append(distance)
+
+    inertia = sum(distance**2 for distance in overall_distances)
+    cluster_stats: List[ClusterStats] = []
+    for idx, hospital in enumerate(hospitals):
+        distances = distances_by_cluster.get(idx, [])
+        count = len(distances)
+        avg_distance = sum(distances) / count if count else 0.0
+        max_distance = max(distances) if distances else 0.0
+        cluster_stats.append(
+            ClusterStats(
+                hospital_id=hospital.id,
+                count=count,
+                avg_distance=avg_distance,
+                max_distance=max_distance,
+            )
+        )
+
+    overall_avg_distance = (
+        sum(overall_distances) / len(overall_distances) if overall_distances else 0.0
+    )
+    overall_max_distance = max(overall_distances) if overall_distances else 0.0
+    return cluster_stats, overall_avg_distance, overall_max_distance, inertia, overall_distances
+
+
+def build_distance_bins(distances: List[float], bins: int = 5) -> List[DistanceBin]:
+    if not distances:
+        return []
+    max_distance = max(distances)
+    if max_distance == 0:
+        return [DistanceBin(label="0 km", count=len(distances))]
+
+    width = max_distance / bins if bins else max_distance
+    counts = [0 for _ in range(bins)]
+    for distance in distances:
+        if width == 0:
+            idx = 0
+        else:
+            idx = min(int(distance / width), bins - 1)
+        counts[idx] += 1
+
+    bins_payload: List[DistanceBin] = []
+    for idx, count in enumerate(counts):
+        start = idx * width
+        end = max_distance if idx == bins - 1 else start + width
+        label = f"{start:.1f}-{end:.1f} km"
+        bins_payload.append(DistanceBin(label=label, count=count))
+    return bins_payload

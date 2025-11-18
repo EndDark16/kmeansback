@@ -34,9 +34,27 @@ class KMeansResponse(BaseModel):
     hospitals: List[Hospital]
     assignments: List[int]
     iterations: int
+    grid_size: int
+    inertia: float
+    overall_avg_distance: float
+    overall_max_distance: float
+    cluster_stats: List["ClusterStats"]
+    distance_bins: List["DistanceBin"]
 
 
 class PretrainedModelResponse(BaseModel):
     k: int
     hospitals: List[List[float]]
     description: str
+
+
+class ClusterStats(BaseModel):
+    hospital_id: int
+    count: int
+    avg_distance: float
+    max_distance: float
+
+
+class DistanceBin(BaseModel):
+    label: str
+    count: int

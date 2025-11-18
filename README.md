@@ -35,6 +35,7 @@ Endpoints principales:
 
 - `GET /health`
 - `POST /kmeans/run` → body `{ "m": 20, "n": 100, "k": 4 }`
+  - Respuesta incluye vecindarios, hospitales, asignaciones y métricas agregadas (`cluster_stats`, `overall_avg_distance`, `overall_max_distance`, `distance_bins`, `inertia`) listas para alimentar dashboards.
 - `GET /kmeans/pretrained`
 
 ## Variables de entorno
