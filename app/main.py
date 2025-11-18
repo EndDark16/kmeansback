@@ -30,7 +30,10 @@ def get_cors_origins() -> List[str]:
     """
     raw = os.getenv("CORS_ORIGINS")
     if not raw:
-        return ["*"]
+        return [
+            "http://localhost:5173",
+            "https://kmeansfront.vercel.app",
+        ]
     return [origin.strip() for origin in raw.split(",") if origin.strip()]
 
 
